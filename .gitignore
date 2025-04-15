@@ -1,0 +1,42 @@
+# Node.js
+node_modules/
+.svelte-kit/
+.vite/
+.svelte2tsx-language-server-files/
+build
+dist
+
+# Mac / OS système
+.DS_Store
+.Trash/
+.AppleDouble
+.AppleDB
+._*
+
+# IDE / Éditeurs
+.vscode/
+.idea/
+*.log
+*.swp
+*.swo
+*.swn
+*.swm
+
+# Config utilisateur
+.config/
+.npm/
+.nvm/
+.zsh_history
+.yarnrc
+.quokka/
+.rest-client/
+.dbclient/
+.mongodb/
+
+# Empêche Git de suivre ce qui est hors du projet (sécurité)
+../*
+
+# Autorise uniquement ce qu’on veut versionner dans le projet
+!/back/
+!/front/
+!.gitignore
