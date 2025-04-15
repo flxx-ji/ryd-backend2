@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ryd-backend2
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    branches: 
+      - main
+    envVars:
+      - key: NODE_ENV
+        value: production
