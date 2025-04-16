@@ -12,6 +12,8 @@ const adminReservationRoutes = require('./routes/adminReservationRoutes.js');
 const adminAuthRoutes = require('./routes/adminAuthRoutes.js');
 const multer = require('multer');
 const path = require('path'); // Module pour gérer les chemins de fichiers
+const pagesRoutes = require('./routes/pagesRoutes');  // Si le fichier est dans le dossier routes
+
 
 // Chargement des variables d'environnement
 dotenv.config();
@@ -49,6 +51,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/', (req, res) => {
     res.send('🚀 API RYD est en ligne !');
 });
+
+//pages routes 
+app.use('/api/pages', pagesRoutes);
 
 // Utilisation des routes
 app.use('/api/motos', motoRoutes);
