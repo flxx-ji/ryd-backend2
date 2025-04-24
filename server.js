@@ -35,6 +35,9 @@ const app = express();
 app.use(express.json({ strict: false }));
 app.use(express.urlencoded({ extended: true }));
 
+// 📂 Servir les fichiers statiques (images) depuis le dossier 'uploads' du backend
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Middleware CORS avec autorisation des requêtes depuis tous les domaines (à personnaliser pour la production)
 const corsOptions = {
   origin: '*', // Permet d'accepter les requêtes depuis n'importe quelle origine
@@ -44,8 +47,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// 📂 Servir les fichiers statiques (images) depuis le dossier 'uploads' du backend
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 // Route de test pour vérifier si l'API fonctionne
 app.get('/', (req, res) => {
