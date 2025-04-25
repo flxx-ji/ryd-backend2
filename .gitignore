@@ -32,6 +32,7 @@ dist
 .rest-client/
 .dbclient/
 .mongodb/
+.env/
 
 # Empêche Git de suivre ce qui est hors du projet (sécurité)
 ../*
