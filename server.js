@@ -31,6 +31,11 @@ process.on('SIGINT', async () => {
 // Initialisation d'Express
 const app = express();
 
+
+//webhook 
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
+
 // Middleware JSON
 app.use(express.json({ strict: false }));
 app.use(express.urlencoded({ extended: true }));
