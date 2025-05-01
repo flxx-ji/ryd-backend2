@@ -12,8 +12,20 @@ router.post('/create-checkout-session', async (req, res) => {
     const end = new Date(dates.fin);
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
 
-    const pricePerDay = moto.tarifs.unJour;
+    const pricePerDay = Number(moto.tarifs.unJour || 0);
     const totalPrice = pricePerDay * days;
+
+    // 🔍 Sécurité : s'assurer que le prix est un entier positif
+if (isNaN(totalPrice) || totalPrice <= 0) {
+    console.error("❌ Prix invalide pour Stripe :", totalPrice);
+    return res.status(400).json({ error: "Prix invalide. Vérifie les tarifs ou les dates." });
+  }
+  
+  // 🪪 Log de débogage
+  console.log("💸 Tarif unitaire (€/jour) :", pricePerDay);
+  console.log("📆 Nombre de jours :", days);
+  console.log("💶 Total brut :", totalPrice);
+  
 
     // 💾 Étape 1.1 : on crée la réservation dans MongoDB
     const newReservation = await Reservation.create({
@@ -30,7 +42,20 @@ router.post('/create-checkout-session', async (req, res) => {
       statut: 'en attente'
     });
 
-    // 💳 Étape 1.2 : on crée la session Stripe avec l'ID de la réservation
+    // 💳 Étape 1.2 : on crée la session Stripe avec l'ID de la 
+    
+    
+console.log('🧪 Debug montant Stripe :');
+console.log('tarif unJour =', moto.tarifs.unJour);
+console.log('days =', days);
+console.log('totalPrice =', totalPrice);
+console.log('unit_amount (envoyé à Stripe) =', Math.round(totalPrice * 100));
+
+if (isNaN(totalPrice) || totalPrice <= 0) {
+  console.error("❌ Erreur: totalPrice invalide", totalPrice);
+  return res.status(400).json({ error: "Prix total invalide" });
+}
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
@@ -42,7 +67,8 @@ router.post('/create-checkout-session', async (req, res) => {
               name: `${moto.nom} (${moto.modele})`,
               description: `Location de ${days} jour(s) - du ${dates.debut} au ${dates.fin}`
             },
-            unit_amount: totalPrice * 100
+            unit_amount: Math.round(totalPrice * 100)
+
           },
           quantity: 1
         }
@@ -87,12 +113,12 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const reservationId = session.metadata.reservationId;
-    const email = session.metadata.email;
-    const motoNom = session.metadata.nomMoto;
-    const dateDebut = new Date(session.metadata.debut);
-    const dateFin = new Date(session.metadata.fin);
-    const heureDebut = session.metadata.heureDebut;
-    const heureFin = session.metadata.heureFin;
+const email = session.metadata.email;
+const motoNom = session.metadata.nomMoto;
+const dateDebut = new Date(session.metadata.debut);
+const dateFin = new Date(session.metadata.fin);
+const heureDebut = session.metadata.heureDebut;
+const heureFin = session.metadata.heureFin;
 
     try {
       const reservation = await Reservation.findById(reservationId);
