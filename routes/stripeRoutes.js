@@ -10,6 +10,11 @@ router.post('/create-checkout-session', async (req, res) => {
 
     const start = new Date(dates.debut);
     const end = new Date(dates.fin);
+    if (end <= start) {
+        console.error("❌ Erreur : la date de fin est avant la date de début");
+        return res.status(400).json({ error: "La date de fin doit être après la date de début." });
+      }
+      
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
 
     const pricePerDay = Number(moto.tarifs.unJour || 0);
@@ -21,10 +26,7 @@ if (isNaN(totalPrice) || totalPrice <= 0) {
     return res.status(400).json({ error: "Prix invalide. Vérifie les tarifs ou les dates." });
   }
   
-  // 🪪 Log de débogage
-  console.log("💸 Tarif unitaire (€/jour) :", pricePerDay);
-  console.log("📆 Nombre de jours :", days);
-  console.log("💶 Total brut :", totalPrice);
+   
   
 
     // 💾 Étape 1.1 : on crée la réservation dans MongoDB
@@ -45,11 +47,7 @@ if (isNaN(totalPrice) || totalPrice <= 0) {
     // 💳 Étape 1.2 : on crée la session Stripe avec l'ID de la 
     
     
-console.log('🧪 Debug montant Stripe :');
-console.log('tarif unJour =', moto.tarifs.unJour);
-console.log('days =', days);
-console.log('totalPrice =', totalPrice);
-console.log('unit_amount (envoyé à Stripe) =', Math.round(totalPrice * 100));
+  
 
 if (isNaN(totalPrice) || totalPrice <= 0) {
   console.error("❌ Erreur: totalPrice invalide", totalPrice);
@@ -84,7 +82,8 @@ if (isNaN(totalPrice) || totalPrice <= 0) {
         heureFin: dates.heureFin
       },
       
-      success_url: 'http://localhost:5173/success',
+      success_url: `http://localhost:5173/success?moto=${encodeURIComponent(moto.nom)}&debut=${dates.debut}&fin=${dates.fin}&prix=${Math.round(totalPrice)}`
+,
       cancel_url: 'http://localhost:5173/cancel'
     });
 
