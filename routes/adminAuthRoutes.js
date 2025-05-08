@@ -42,10 +42,11 @@ router.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: "67d200b216a1eda067c782fc", email: "admin@example.com", nom: "John Wick" },
+            { id: admin._id, email: admin.email, nom: admin.nom },
             process.env.JWT_SECRET,
             { expiresIn: process.env.NODE_ENV === 'test' ? '7d' : '2h' }
         );
+        
 
         res.status(200).json({ message: "Connexion réussie", token, nom: admin.nom });
     } catch (error) {
