@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization;
+    console.log("🔐 Header Authorization :", authHeader); // Ajout temporaire
+
 
 if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: "Accès refusé. Aucun token fourni." });

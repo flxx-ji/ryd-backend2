@@ -16,31 +16,50 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
-// ✅ 1. Ajouter une moto (POST)
 router.post('/', upload.single('image'), async (req, res) => {
-    try {
-        const { nom, marque, modele, annee, couleur, tarifs, disponible, caracteristiques, equipements } = req.body;
+	try {
+		const {
+			nom,
+			marque,
+			modele,
+			annee,
+			couleur,
+			tarifs,
+			disponible,
+			caracteristiques,
+			equipements
+		} = req.body;
 
-        const nouvelleMoto = new Moto({
-            nom,
-            marque,
-            modele,
-            annee,
-            couleur,
-            tarifs: JSON.parse(tarifs), // ⚠️ Car reçu sous forme de string depuis un formulaire
-            disponible: disponible === 'true' || disponible === true,
-            caracteristiques: JSON.parse(caracteristiques || '{}'),
-            equipements: JSON.parse(equipements || '[]'),
-            image: req.file ? `/uploads/${req.file.filename}` : '/uploads/default_image.webp'
-        });
+		const nouvelleMoto = new Moto({
+			nom,
+			marque,
+			modele,
+			annee,
+			couleur,
+			tarifs: JSON.parse(tarifs || '{}'),
+			disponible: disponible === 'true' || disponible === true,
+			caracteristiques: tryParseJSON(caracteristiques, {}),
+			equipements: tryParseJSON(equipements, []),
+			image: req.file ? `/uploads/${req.file.filename}` : '/uploads/default_image.webp'
+		});
 
-        const motoEnregistree = await nouvelleMoto.save();
-        res.status(201).json(motoEnregistree);
-    } catch (error) {
-        console.error("❌ Erreur ajout moto :", error);
-        res.status(500).json({ message: "Erreur ajout moto", error });
-    }
+		const motoEnregistree = await nouvelleMoto.save();
+		res.status(201).json(motoEnregistree);
+	} catch (error) {
+		console.error("❌ Erreur ajout moto :", error);
+		res.status(500).json({ message: "Erreur ajout moto", error });
+	}
 });
+
+// 🛠️ Petit utilitaire en haut du fichier ou dans un helper
+function tryParseJSON(jsonString, fallback) {
+	try {
+		return JSON.parse(jsonString);
+	} catch {
+		return fallback;
+	}
+}
+
 
 // ✅ 2. Récupérer toutes les motos (GET)
 router.get('/', async (req, res) => {
@@ -74,9 +93,13 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ message: "ID invalide" });
         }
+
+        // 🔍 Vérifie les données envoyées
+        console.log("✉️ Données reçues pour update :", req.body);
 
         const updatedMoto = await Moto.findByIdAndUpdate(
             id,
@@ -88,9 +111,11 @@ router.put('/:id', async (req, res) => {
 
         res.status(200).json(updatedMoto);
     } catch (error) {
+        console.error("❌ Erreur mise à jour moto :", error);
         res.status(500).json({ message: "Erreur mise à jour moto", error });
     }
 });
+
 
 // ✅ 5. Supprimer une moto (DELETE)
 router.delete('/:id', async (req, res) => {
