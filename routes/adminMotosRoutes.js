@@ -36,7 +36,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 			modele,
 			annee,
 			couleur,
-			tarifs: JSON.parse(tarifs || '{}'),
+			tarifs: tryParseJSON(tarifs || '{}'),
 			disponible: disponible === 'true' || disponible === true,
 			caracteristiques: tryParseJSON(caracteristiques, {}),
 			equipements: tryParseJSON(equipements, []),
