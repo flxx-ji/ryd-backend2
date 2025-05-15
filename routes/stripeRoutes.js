@@ -78,3 +78,6 @@ router.post('/create-checkout-session', async (req, res) => {
     res.status(500).json({ error: 'Erreur Stripe' });
   }
 });
+
+
+module.exports = router;
