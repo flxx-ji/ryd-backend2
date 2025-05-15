@@ -32,11 +32,11 @@ connectDB();
 const app = express();
 
 // ⚠️ Middleware Stripe Webhook - DOIT être défini **avant** express.json()
-app.post(
-  '/api/stripe/webhook',
-  express.raw({ type: 'application/json' }),
-  stripeRoutes
-);
+// app.post(
+//   '/api/stripe/webhook',
+//   express.raw({ type: 'application/json' }),
+//   stripeRoutes
+// );
 
 // 🔐 Créer un admin temporaire (à supprimer en prod)
  /*
