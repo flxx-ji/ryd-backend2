@@ -151,6 +151,30 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+// 4️⃣ Supprimer une moto (DELETE)
+router.delete('/:id', async (req, res) => {
+  const id = req.params.id;
+
+  // Vérifie si l'ID est valide
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "ID invalide" });
+  }
+
+  try {
+    const deletedMoto = await Moto.findByIdAndDelete(id);
+
+    if (!deletedMoto) {
+      return res.status(404).json({ message: "Moto non trouvée" });
+    }
+
+    res.status(200).json({ message: "Moto supprimée avec succès", moto: deletedMoto });
+
+  } catch (error) {
+    console.error("❌ Erreur lors de la suppression :", error);
+    res.status(500).json({ message: "Erreur serveur", error });
+  }
+});
+
 
 // Exportation du routeur pour l'utiliser dans server.js
 module.exports = router;
