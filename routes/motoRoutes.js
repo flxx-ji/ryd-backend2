@@ -124,5 +124,33 @@ router.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
+
+// 3️⃣ Modifier une moto existante (PATCH)
+router.patch('/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID invalide" });
+    }
+
+    const updatedMoto = await Moto.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedMoto) {
+      return res.status(404).json({ message: "Moto non trouvée" });
+    }
+
+    res.status(200).json(updatedMoto);
+
+  } catch (error) {
+    console.error("❌ Erreur lors de la mise à jour :", error);
+    res.status(500).json({ message: "Erreur serveur", error });
+  }
+});
+
+
 // Exportation du routeur pour l'utiliser dans server.js
 module.exports = router;
