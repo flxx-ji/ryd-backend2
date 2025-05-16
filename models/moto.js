@@ -26,12 +26,13 @@ const motoSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    tarifs: {
-        unJour: { type: Number, required: true },
-        troisJours: { type: Number, required: true },
-        uneSemaine: { type: Number, required: true },
-        quatreCinqJours: { type: Number, required: true }
-    },
+  tarifs: {
+  unJour: { type: Number, required: true },
+  uneSemaine: { type: Number, required: true },
+  deuxTroisJours: { type: String },
+  quatreCinqJours: { type: String }
+}
+,
     disponible: {
         type: Boolean,
         default: true
