@@ -83,36 +83,45 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     // Vérification des champs obligatoires
     if (!nom || !annee || !tarifs || !tarifs.unJour) {
-        return res.status(400).json({ message: "❌ Le nom, l'année et le tarif journalier sont requis." });
+      return res.status(400).json({ message: "❌ Le nom, l'année et le tarif journalier sont requis." });
     }
 
-    // Convertir l'année en nombre
+    // ⚠️ Convertir les prix obligatoires en nombre
     const anneeNum = Number(annee);
-    if (isNaN(anneeNum) || isNaN(tarifs.unJour) || isNaN(tarifs.troisJours) || isNaN(tarifs.uneSemaine) || isNaN(tarifs.quatreCinqJours)) {
-        return res.status(400).json({ message: "❌ L'année et le prix doivent être des nombres valides." });
+    const unJour = Number(tarifs.unJour);
+    const uneSemaine = Number(tarifs.uneSemaine);
+
+    if (isNaN(anneeNum) || isNaN(unJour) || isNaN(uneSemaine)) {
+      return res.status(400).json({ message: "❌ L'année et le prix doivent être des nombres valides." });
     }
 
-    // Vérifier si une image a été envoyée
-   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    // 📷 Génération de l'URL de l'image
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-    // Créer la nouvelle moto
-    const nouvelleMoto = new Moto({ 
-        nom, 
-        marque, 
-        modele, 
-        annee: anneeNum, 
-        couleur, 
-        tarifs,
-        disponible: disponible === "true", // Converti en booléen
-        caracteristiques: {
-          moteur: caracteristiques.moteur || "Non spécifié",
-          cylindree: caracteristiques.cylindree || "Non spécifié",
-          transmission: caracteristiques.transmission || "Non spécifié",
-          poids: caracteristiques.poids || "Non spécifié",
-          autonomie: caracteristiques.autonomie || "Non spécifié",
-          reservoir: caracteristiques.reservoir || "Non spécifié"
+    // Création de l'objet moto
+    const nouvelleMoto = new Moto({
+      nom,
+      marque,
+      modele,
+      annee: anneeNum,
+      couleur,
+      tarifs: {
+        unJour,
+        uneSemaine,
+        deuxTroisJours: tarifs.deuxTroisJours,
+        quatreCinqJours: tarifs.quatreCinqJours
       },
-        image: imageUrl
+      disponible: disponible === "true" || disponible === true,
+      caracteristiques: {
+        moteur: caracteristiques?.moteur || "Non spécifié",
+        cylindree: caracteristiques?.cylindree || "Non spécifié",
+        transmission: caracteristiques?.transmission || "Non spécifié",
+        poids: caracteristiques?.poids || "Non spécifié",
+        autonomie: caracteristiques?.autonomie || "Non spécifié",
+        reservoir: caracteristiques?.reservoir || "Non spécifié"
+      },
+      equipements: equipements || ["Casque", "Gants", "GPS", "Gopro", "Carte Sd", "Combi de pluie"],
+      image: imageUrl
     });
 
     const motoEnregistree = await nouvelleMoto.save();
