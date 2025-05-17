@@ -40,24 +40,24 @@ const app = express();
 
 // 🔐 Créer un admin temporaire (à supprimer en prod)
  
-(async () => {
-  try {
-    const existingAdmin = await Admin.findOne({ email: 'admin@ryd.com' });
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('123456', 10);
-      await Admin.create({
-        email: 'admin@ryd.com',
-        password: hashedPassword,
-        nom: 'Super Admin'
-      });
-      console.log('✅ Admin par défaut créé : admin@ryd.com / 123456');
-    } else {
-      console.log('ℹ️ Admin déjà présent en base');
-    }
-  } catch (err) {
-    console.error('❌ Erreur création admin par défaut :', err);
-  }
-})();
+// (async () => {
+//   try {
+//     const existingAdmin = await Admin.findOne({ email: 'admin@ryd.com' });
+//     if (!existingAdmin) {
+//       const hashedPassword = await bcrypt.hash('123456', 10);
+//       await Admin.create({
+//         email: 'admin@ryd.com',
+//         password: hashedPassword,
+//         nom: 'Super Admin'
+//       });
+//       console.log('✅ Admin par défaut créé : admin@ryd.com / 123456');
+//     } else {
+//       console.log('ℹ️ Admin déjà présent en base');
+//     }
+//   } catch (err) {
+//     console.error('❌ Erreur création admin par défaut :', err);
+//   }
+// })();
 
 
 // 🌍 CORS
