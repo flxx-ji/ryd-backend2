@@ -39,7 +39,7 @@ const app = express();
 // );
 
 // 🔐 Créer un admin temporaire (à supprimer en prod)
- /*
+ 
 (async () => {
   try {
     const existingAdmin = await Admin.findOne({ email: 'admin@ryd.com' });
@@ -58,7 +58,7 @@ const app = express();
     console.error('❌ Erreur création admin par défaut :', err);
   }
 })();
-*/
+
 
 // 🌍 CORS
 app.use(cors({
