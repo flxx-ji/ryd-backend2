@@ -133,5 +133,45 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ message: "Erreur suppression moto", error });
     }
 });
+// PATCH générique : modification partielle
+router.patch('/:id', async (req, res) => {
+  try {
+    const { key, value } = req.body;
 
+    if (!key || typeof value === 'undefined') {
+      return res.status(400).json({ message: 'Données manquantes' });
+    }
+
+    const updated = await Moto.findByIdAndUpdate(
+      req.params.id,
+      { $set: { [key]: value } },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Moto non trouvée" });
+
+    res.json({ message: 'Moto mise à jour', updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+ 
+
+router.post('/:id/image', upload.single('image'), async (req, res) => {
+  try {
+    const filePath = `/uploads/${req.file.filename}`;
+    const updated = await Moto.findByIdAndUpdate(
+      req.params.id,
+      { image: filePath },
+      { new: true }
+    );
+    res.json({ message: 'Image mise à jour', image: filePath });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur lors de l\'upload.' });
+  }
+});
 module.exports = router;
+
