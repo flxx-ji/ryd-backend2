@@ -1,5 +1,3 @@
- 
-
 function tryParseJSON(input, fallback = {}) {
 	try {
 		return typeof input === 'string' ? JSON.parse(input) : input;
@@ -8,7 +6,7 @@ function tryParseJSON(input, fallback = {}) {
 	}
 }
 
-module.exports = (req, res, next) => {
+function parseMotoData(req, res, next) {
 	req.body.tarifs = tryParseJSON(req.body.tarifs, {});
 	req.body.caracteristiques = tryParseJSON(req.body.caracteristiques, {});
 	req.body.equipements = tryParseJSON(req.body.equipements, []);
@@ -26,5 +24,7 @@ module.exports = (req, res, next) => {
 	}
 
 	next(); // 🔁 Passe à la suite
-};
+}
+
+// ✅ Export propre et sans crash
 module.exports = parseMotoData;
