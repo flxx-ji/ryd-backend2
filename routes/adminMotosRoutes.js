@@ -60,27 +60,50 @@ router.get('/:id', async (req, res) => {
 });
 
 // ✅ 4. Modifier une moto (PUT complet)
-router.put('/:id', parseMotoData, async (req, res) => {
-	try {
-		const { id } = req.params;
-		if (!mongoose.Types.ObjectId.isValid(id)) {
-			return res.status(400).json({ message: "ID invalide" });
-		}
+router.put('/:id', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
 
-		const updatedMoto = await Moto.findByIdAndUpdate(
-			id,
-			{ $set: req.body },
-			{ new: true, runValidators: true, context: 'query' }
-	 );
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID invalide" });
+    }
 
-		if (!updatedMoto) return res.status(404).json({ message: "Moto non trouvée" });
+    const tryParseJSON = (input, fallback = {}) => {
+      try {
+        return typeof input === 'string' ? JSON.parse(input) : input;
+      } catch {
+        return fallback;
+      }
+    };
 
-		res.status(200).json(updatedMoto);
-	} catch (error) {
-		console.error("❌ Erreur mise à jour moto :", error);
-		res.status(500).json({ message: "Erreur mise à jour moto", error });
-	}
+    // 💡 Prépare les données à mettre à jour
+    const updateData = {
+      ...req.body,
+      tarifs: tryParseJSON(req.body.tarifs, {}),
+      caracteristiques: tryParseJSON(req.body.caracteristiques, {}),
+      equipements: tryParseJSON(req.body.equipements, [])
+    };
+
+    // 📸 Ajout de l'image uniquement si une nouvelle est fournie
+    if (req.file) {
+      updateData.image = `/uploads/${req.file.filename}`;
+    }
+
+    const updatedMoto = await Moto.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedMoto) return res.status(404).json({ message: "Moto non trouvée" });
+
+    res.status(200).json({ message: '✅ Moto mise à jour', updatedMoto });
+  } catch (error) {
+    console.error("❌ Erreur mise à jour moto :", error);
+    res.status(500).json({ message: "Erreur mise à jour moto", error });
+  }
 });
+
 
 // ✅ 5. Supprimer une moto (DELETE)
 router.delete('/:id', async (req, res) => {
