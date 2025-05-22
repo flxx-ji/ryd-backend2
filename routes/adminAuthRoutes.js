@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Admin = require('../models/admin'); // Import du modèle Admin
 const jwt = require('jsonwebtoken'); // Import de jsonwebtoken
+const authMiddleware = require('../middleware/authMiddleware');
+
 
 
 
@@ -52,6 +54,23 @@ router.post('/login', async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la connexion", error });
     }
+});
+// ✅ GET - Vérification de connexion admin
+router.get('/protected', authMiddleware, async (req, res) => {
+	try {
+		const admin = await Admin.findById(req.adminId).select('nom email');
+		if (!admin) {
+			return res.status(404).json({ message: "Admin introuvable" });
+		}
+		res.status(200).json({
+			message: "Accès autorisé",
+			nom: admin.nom,
+			email: admin.email
+		});
+	} catch (error) {
+		console.error("❌ Erreur /protected :", error);
+		res.status(500).json({ message: "Erreur serveur" });
+	}
 });
 
 module.exports = router;
