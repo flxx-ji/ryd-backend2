@@ -27,4 +27,4 @@ module.exports = (req, res, next) => {
 
 	next(); // 🔁 Passe à la suite
 };
-module.exports = parseMotoData.js
+module.exports = parseMotoData;
