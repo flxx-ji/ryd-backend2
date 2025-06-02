@@ -62,7 +62,11 @@ const app = express();
 
 // 🌍 CORS
 app.use(cors({
-  origin: 'https://ryd-custom-motorcycle.netlify.app',
+  origin: [
+     'https://ryd-custom-motorcycle.netlify.app',
+     'https://ryd-admin.netlify.app'
+  ],
+
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
