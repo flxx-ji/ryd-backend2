@@ -1,42 +1,12 @@
-const multer = require('multer');
-const path = require('path');
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 const Moto = require('../models/moto.js');
+const multer = require('multer');
+const cloudinaryStorage = require('../config/storage'); // 🔧 Cloudinary + multer
+const upload = multer({ storage: cloudinaryStorage }); // ✅ Utilisation de Cloudinary
 const fs = require('fs');
-
-// 📌 Vérifier si le dossier "uploads" existe
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log("📂 Dossier 'uploads' créé ✅");
-}
-
-// 🔧 Config multer pour les images
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|webp|avif/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (extname && mimetype) cb(null, true);
-  else cb(new Error('Seuls les fichiers JPEG, JPG, PNG, webp et avif sont autorisés'));
-};
-
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }
-});
+const path = require('path');
 
 // 1️⃣ GET /api/motos → Liste
 router.get('/', async (req, res) => {
@@ -82,7 +52,7 @@ router.post('/', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: "❌ L'année et le prix doivent être des nombres valides." });
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const imageUrl = req.file ? req.file.path : null; // ✅ URL directe Cloudinary
 
     const nouvelleMoto = new Moto({
       nom,
