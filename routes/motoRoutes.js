@@ -1,4 +1,3 @@
-// Importation des modules nécessaires
 const multer = require('multer');
 const path = require('path');
 const express = require('express');
@@ -7,86 +6,74 @@ const router = express.Router();
 const Moto = require('../models/moto.js');
 const fs = require('fs');
 
-// 📌 Vérifier si le dossier "uploads" existe, sinon le créer
+// 📌 Vérifier si le dossier "uploads" existe
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true }); // Crée le dossier s'il n'existe pas
+    fs.mkdirSync(uploadDir, { recursive: true });
     console.log("📂 Dossier 'uploads' créé ✅");
 }
 
-// Définir le stockage des fichiers
+// 🔧 Config multer pour les images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Dossier où seront stockées les images
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Nom unique pour éviter les doublons
+    cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 
-// Filtrer les fichiers (Accepter uniquement les images)
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|webp|avif/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
-  if (extname && mimetype) {
-    return cb(null, true);
-  } else {
-    return cb(new Error('Seuls les fichiers JPEG, JPG, PNG, webp et avif sont autorisés'));
-  }
+  if (extname && mimetype) cb(null, true);
+  else cb(new Error('Seuls les fichiers JPEG, JPG, PNG, webp et avif sont autorisés'));
 };
 
-// Initialiser Multer
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 } // Limite de 5MB par fichier
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// 1️⃣ Lister toutes les motos (GET)
+// 1️⃣ GET /api/motos → Liste
 router.get('/', async (req, res) => {
-    try {
-      const motos = await Moto.find(); // Récupérer toutes les motos
-      res.status(200).json(motos);
-    } catch (error) {
-      res.status(500).json({ message: "Erreur lors de la récupération des motos", error });
-    }
+  try {
+    const motos = await Moto.find();
+    res.status(200).json(motos);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la récupération des motos", error });
+  }
 });
-  
-// 2️⃣ Obtenir une moto par son ID (GET)
+
+// 2️⃣ GET /api/motos/:id → Détail
 router.get('/:id', async (req, res) => {
-    try {
-        // Vérifie si l'ID est bien un ObjectId valide
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ message: "ID invalide" });
-        }
+  const id = String(req.params.id).trim();
 
-        const moto = await Moto.findById(req.params.id); // Recherche la moto
-        if (!moto) return res.status(404).json({ message: "Moto non trouvée" });
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "ID invalide" });
+  }
 
-        res.status(200).json(moto);
-    } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la récupération de la moto", error });
-    }
+  try {
+    const moto = await Moto.findById(id);
+    if (!moto) return res.status(404).json({ message: "Moto non trouvée" });
+    res.status(200).json(moto);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la récupération de la moto", error });
+  }
 });
 
-/**
- * Route POST /motos pour ajouter une nouvelle moto
- */
+// 3️⃣ POST /api/motos → Ajouter une moto
 router.post('/', upload.single('image'), async (req, res) => {
   try {
-    console.log("📩 Requête reçue :", req.body);
-    console.log("📸 Fichier reçu :", req.file ? req.file.filename : "Aucune image reçue");
-
     const { nom, marque, modele, annee, couleur, tarifs, disponible, caracteristiques, equipements } = req.body;
 
-    // Vérification des champs obligatoires
     if (!nom || !annee || !tarifs || !tarifs.unJour) {
       return res.status(400).json({ message: "❌ Le nom, l'année et le tarif journalier sont requis." });
     }
 
-    // ⚠️ Convertir les prix obligatoires en nombre
     const anneeNum = Number(annee);
     const unJour = Number(tarifs.unJour);
     const uneSemaine = Number(tarifs.uneSemaine);
@@ -95,10 +82,8 @@ router.post('/', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: "❌ L'année et le prix doivent être des nombres valides." });
     }
 
-    // 📷 Génération de l'URL de l'image
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-    // Création de l'objet moto
     const nouvelleMoto = new Moto({
       nom,
       marque,
@@ -126,23 +111,21 @@ router.post('/', upload.single('image'), async (req, res) => {
 
     const motoEnregistree = await nouvelleMoto.save();
     res.status(201).json(motoEnregistree);
-
   } catch (error) {
     console.error("❌ Erreur lors de l'ajout de la moto :", error);
     res.status(500).json({ message: "Erreur lors de l'ajout de la moto", error });
   }
 });
 
-
-// 3️⃣ Modifier une moto existante (PATCH)
+// 4️⃣ PATCH /api/motos/:id → Modifier
 router.patch('/:id', async (req, res) => {
+  const id = String(req.params.id).trim();
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "ID invalide" });
+  }
+
   try {
-    const id = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "ID invalide" });
-    }
-
     const updatedMoto = await Moto.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true
@@ -153,18 +136,16 @@ router.patch('/:id', async (req, res) => {
     }
 
     res.status(200).json(updatedMoto);
-
   } catch (error) {
     console.error("❌ Erreur lors de la mise à jour :", error);
     res.status(500).json({ message: "Erreur serveur", error });
   }
 });
 
-// 4️⃣ Supprimer une moto (DELETE)
+// 5️⃣ DELETE /api/motos/:id → Supprimer
 router.delete('/:id', async (req, res) => {
-  const id = req.params.id;
+  const id = String(req.params.id).trim();
 
-  // Vérifie si l'ID est valide
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "ID invalide" });
   }
@@ -177,13 +158,10 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.status(200).json({ message: "Moto supprimée avec succès", moto: deletedMoto });
-
   } catch (error) {
     console.error("❌ Erreur lors de la suppression :", error);
     res.status(500).json({ message: "Erreur serveur", error });
   }
 });
 
-
-// Exportation du routeur pour l'utiliser dans server.js
 module.exports = router;
