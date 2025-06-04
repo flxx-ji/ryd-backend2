@@ -3,10 +3,8 @@ const mongoose = require('mongoose');
 const router = express.Router();
 const Moto = require('../models/moto.js');
 const multer = require('multer');
-const cloudinaryStorage = require('../config/storage'); // 🔧 Cloudinary + multer
-const upload = multer({ storage: cloudinaryStorage }); // ✅ Utilisation de Cloudinary
-const fs = require('fs');
-const path = require('path');
+const cloudinaryStorage = require('../config/storage'); // 🔧 Cloudinary config
+const upload = multer({ storage: cloudinaryStorage }); // ✅ Upload via Cloudinary
 
 // 1️⃣ GET /api/motos → Liste
 router.get('/', async (req, res) => {
@@ -40,19 +38,14 @@ router.post('/', upload.single('image'), async (req, res) => {
   try {
     const { nom, marque, modele, annee, couleur, tarifs, disponible, caracteristiques, equipements } = req.body;
 
-    if (!nom || !annee || !tarifs || !tarifs.unJour) {
+    if (!nom || !annee || !tarifs || !JSON.parse(tarifs).unJour) {
       return res.status(400).json({ message: "❌ Le nom, l'année et le tarif journalier sont requis." });
     }
 
     const anneeNum = Number(annee);
-    const unJour = Number(tarifs.unJour);
-    const uneSemaine = Number(tarifs.uneSemaine);
+    const parsedTarifs = JSON.parse(tarifs);
 
-    if (isNaN(anneeNum) || isNaN(unJour) || isNaN(uneSemaine)) {
-      return res.status(400).json({ message: "❌ L'année et le prix doivent être des nombres valides." });
-    }
-
-    const imageUrl = req.file ? req.file.path : null; // ✅ URL directe Cloudinary
+    const imageUrl = req.file ? req.file.path : null;
 
     const nouvelleMoto = new Moto({
       nom,
@@ -61,21 +54,14 @@ router.post('/', upload.single('image'), async (req, res) => {
       annee: anneeNum,
       couleur,
       tarifs: {
-        unJour,
-        uneSemaine,
-        deuxTroisJours: tarifs.deuxTroisJours,
-        quatreCinqJours: tarifs.quatreCinqJours
+        unJour: parsedTarifs.unJour,
+        deuxTroisJours: parsedTarifs.deuxTroisJours,
+        quatreCinqJours: parsedTarifs.quatreCinqJours,
+        uneSemaine: parsedTarifs.uneSemaine
       },
       disponible: disponible === "true" || disponible === true,
-      caracteristiques: {
-        moteur: caracteristiques?.moteur || "Non spécifié",
-        cylindree: caracteristiques?.cylindree || "Non spécifié",
-        transmission: caracteristiques?.transmission || "Non spécifié",
-        poids: caracteristiques?.poids || "Non spécifié",
-        autonomie: caracteristiques?.autonomie || "Non spécifié",
-        reservoir: caracteristiques?.reservoir || "Non spécifié"
-      },
-      equipements: equipements || ["Casque", "Gants", "GPS", "Gopro", "Carte Sd", "Combi de pluie"],
+      caracteristiques: caracteristiques || {},
+      equipements: equipements || [],
       image: imageUrl
     });
 
@@ -87,8 +73,8 @@ router.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
-// 4️⃣ PATCH /api/motos/:id → Modifier
-router.patch('/:id', async (req, res) => {
+// 4️⃣ PATCH /api/motos/:id → Modifier (image + données)
+router.patch('/:id', upload.single('image'), async (req, res) => {
   const id = String(req.params.id).trim();
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -96,7 +82,17 @@ router.patch('/:id', async (req, res) => {
   }
 
   try {
-    const updatedMoto = await Moto.findByIdAndUpdate(id, req.body, {
+    const data = { ...req.body };
+
+    if (req.file) {
+      data.image = req.file.path; // 🔥 Cloudinary image URL
+    }
+
+    if (data.tarifs && typeof data.tarifs === 'string') {
+      data.tarifs = JSON.parse(data.tarifs);
+    }
+
+    const updatedMoto = await Moto.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true
     });
