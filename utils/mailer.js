@@ -48,4 +48,27 @@ async function notifyOwner(reservation) {
   }
 }
 
-module.exports = { notifyOwner };
+async function notifyClient({ nomMoto, dateDebut, dateFin, prixTotal, email }) {
+  const mailOptions = {
+    from: `"Ride Your Dream" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: `✅ Confirmation de votre réservation – ${nomMoto}`,
+    html: `
+      <h2>Merci pour votre réservation !</h2>
+      <p>Votre moto <strong>${nomMoto}</strong> est réservée.</p>
+      <p><strong>Dates :</strong> du ${new Date(dateDebut).toLocaleDateString()} au ${new Date(dateFin).toLocaleDateString()}</p>
+      <p><strong>Total :</strong> ${prixTotal} €</p>
+      <br>
+      <p>À bientôt sur la route 🏍️</p>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("📨 Mail envoyé au client");
+  } catch (error) {
+    console.error("❌ Erreur mail client :", error);
+  }
+}
+
+module.exports = { notifyOwner, notifyClient};

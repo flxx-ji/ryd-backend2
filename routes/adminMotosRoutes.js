@@ -1,164 +1,91 @@
+// routes/admin/adminMotoRoutes.js
+
 const express = require('express');
 const router = express.Router();
-const Moto = require('../models/moto');
-const authMiddleware = require('../middleware/authMiddleware');
-const parseMotoData = require('../middleware/parseMotoData');
-const mongoose = require('mongoose');
-const multer = require('multer');
+const Moto = require('../../models/moto');
 
-// 🛡️ Toutes les routes sont protégées par un token JWT
-router.use(authMiddleware);
+// Fonction pour calculer les tarifs spéciaux à l'enregistrement
+function calculerTarifsSpeciaux(unJour) {
+  const deuxTroisJours = `${unJour * 2} - ${unJour * 3}`;
+  const quatreCinqJours = `${(unJour * 4 * 0.8).toFixed(2)} - ${(unJour * 5 * 0.8).toFixed(2)}`;
+  const uneSemaine = unJour * 6; // 7e jour offert
+  return { deuxTroisJours, quatreCinqJours, uneSemaine };
+}
 
-// 📦 Multer – Gère l’upload d’images
-const storage = multer.diskStorage({
-	destination: (req, file, cb) => cb(null, 'uploads/'),
-	filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
-const upload = multer({ storage });
-
-// ✅ 1. Ajouter une nouvelle moto (POST)
-router.post('/', upload.single('image'), parseMotoData, async (req, res) => {
-	try {
-		const nouvelleMoto = new Moto({
-			...req.body,
-			image: req.file ? `/uploads/${req.file.filename}` : '/uploads/default_image.webp'
-		});
-
-		const motoEnregistree = await nouvelleMoto.save();
-		res.status(201).json(motoEnregistree);
-	} catch (error) {
-		console.error("❌ Erreur ajout moto :", error);
-		res.status(500).json({ message: "Erreur ajout moto", error });
-	}
-});
-
-// ✅ 2. Récupérer toutes les motos (GET)
-router.get('/', async (req, res) => {
-	try {
-		const motos = await Moto.find();
-		res.status(200).json(motos);
-	} catch (error) {
-		res.status(500).json({ message: "Erreur récupération motos", error });
-	}
-});
-
-// ✅ 3. Récupérer une moto par ID (GET)
-router.get('/:id', async (req, res) => {
-	try {
-		const { id } = req.params;
-		if (!mongoose.Types.ObjectId.isValid(id)) {
-			return res.status(400).json({ message: "ID invalide" });
-		}
-
-		const moto = await Moto.findById(id);
-		if (!moto) return res.status(404).json({ message: "Moto non trouvée" });
-
-		res.status(200).json(moto);
-	} catch (error) {
-		res.status(500).json({ message: "Erreur récupération moto", error });
-	}
-});
-
-// ✅ 4. Modifier une moto (PUT complet)
-router.put('/:id', upload.single('image'), async (req, res) => {
+// ➕ Ajouter une nouvelle moto (admin uniquement)
+router.post('/', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { unJour } = req.body.tarifs;
+    const tarifsSpeciaux = calculerTarifsSpeciaux(unJour);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "ID invalide" });
-    }
-
-    const tryParseJSON = (input, fallback = {}) => {
-      try {
-        return typeof input === 'string' ? JSON.parse(input) : input;
-      } catch {
-        return fallback;
-      }
-    };
-
-    // 💡 Prépare les données à mettre à jour
-    const updateData = {
+    const nouvelleMoto = new Moto({
       ...req.body,
-      tarifs: tryParseJSON(req.body.tarifs, {}),
-      caracteristiques: tryParseJSON(req.body.caracteristiques, {}),
-      equipements: tryParseJSON(req.body.equipements, [])
-    };
+      tarifs: {
+        ...req.body.tarifs,
+        deuxTroisJours: tarifsSpeciaux.deuxTroisJours,
+        quatreCinqJours: tarifsSpeciaux.quatreCinqJours,
+        uneSemaine: tarifsSpeciaux.uneSemaine,
+      }
+    });
 
-    // 📸 Ajout de l'image uniquement si une nouvelle est fournie
-    if (req.file) {
-      updateData.image = `/uploads/${req.file.filename}`;
-    }
-
-    const updatedMoto = await Moto.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedMoto) return res.status(404).json({ message: "Moto non trouvée" });
-
-    res.status(200).json({ message: '✅ Moto mise à jour', updatedMoto });
-  } catch (error) {
-    console.error("❌ Erreur mise à jour moto :", error);
-    res.status(500).json({ message: "Erreur mise à jour moto", error });
+    const motoCreee = await nouvelleMoto.save();
+    res.status(201).json(motoCreee);
+  } catch (err) {
+    console.error("Erreur création moto :", err);
+    res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
+// 📝 Modifier une moto
+router.put('/:id', async (req, res) => {
+  try {
+    const { unJour } = req.body.tarifs;
+    const tarifsSpeciaux = calculerTarifsSpeciaux(unJour);
 
-// ✅ 5. Supprimer une moto (DELETE)
+    const motoModifiee = await Moto.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...req.body,
+        tarifs: {
+          ...req.body.tarifs,
+          deuxTroisJours: tarifsSpeciaux.deuxTroisJours,
+          quatreCinqJours: tarifsSpeciaux.quatreCinqJours,
+          uneSemaine: tarifsSpeciaux.uneSemaine,
+        }
+      },
+      { new: true }
+    );
+
+    if (!motoModifiee) return res.status(404).json({ message: 'Moto non trouvée' });
+
+    res.json(motoModifiee);
+  } catch (err) {
+    console.error("Erreur modification moto :", err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// 🗑️ Supprimer une moto
 router.delete('/:id', async (req, res) => {
-	try {
-		const { id } = req.params;
-		if (!mongoose.Types.ObjectId.isValid(id)) {
-			return res.status(400).json({ message: "ID invalide" });
-		}
-
-		const deleted = await Moto.findByIdAndDelete(id);
-		if (!deleted) return res.status(404).json({ message: "Moto non trouvée" });
-
-		res.status(200).json({ message: "Moto supprimée avec succès" });
-	} catch (error) {
-		res.status(500).json({ message: "Erreur suppression moto", error });
-	}
+  try {
+    const moto = await Moto.findByIdAndDelete(req.params.id);
+    if (!moto) return res.status(404).json({ message: 'Moto non trouvée' });
+    res.json({ message: 'Moto supprimée' });
+  } catch (err) {
+    console.error("Erreur suppression moto :", err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 });
 
-// ✅ 6. Modifier un seul champ (PATCH)
-router.patch('/:id', async (req, res) => {
-	try {
-		const { key, value } = req.body;
-		if (!key || typeof value === 'undefined') {
-			return res.status(400).json({ message: 'Données manquantes' });
-		}
-
-		const updated = await Moto.findByIdAndUpdate(
-			req.params.id,
-			{ $set: { [key]: value } },
-			{ new: true }
-		);
-
-		if (!updated) return res.status(404).json({ message: "Moto non trouvée" });
-
-		res.json({ message: 'Moto mise à jour', updated });
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ message: 'Erreur serveur' });
-	}
-});
-
-// ✅ 7. Upload ou mise à jour image moto
-router.post('/:id/image', upload.single('image'), async (req, res) => {
-	try {
-		const filePath = `/uploads/${req.file.filename}`;
-		const updated = await Moto.findByIdAndUpdate(
-			req.params.id,
-			{ image: filePath },
-			{ new: true }
-		);
-		res.json({ message: 'Image mise à jour', image: filePath });
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ message: "Erreur lors de l'upload." });
-	}
+// 📄 Lister toutes les motos (admin)
+router.get('/', async (req, res) => {
+  try {
+    const motos = await Moto.find();
+    res.json(motos);
+  } catch (err) {
+    console.error("Erreur récupération motos :", err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
 });
 
 module.exports = router;
