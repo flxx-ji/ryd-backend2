@@ -31,34 +31,11 @@ connectDB();
 // ✅ Initialisation d'Express
 const app = express();
 
-// ⚠️ Middleware Stripe Webhook - DOIT être défini **avant** express.json()
-// app.post(
-//   '/api/stripe/webhook',
-//   express.raw({ type: 'application/json' }),
-//   stripeRoutes
-// );
-
-// 🔐 Créer un admin temporaire (à supprimer en prod)
- 
-// (async () => {
-//   try {
-//     const existingAdmin = await Admin.findOne({ email: 'admin@ryd.com' });
-//     if (!existingAdmin) {
-//       const hashedPassword = await bcrypt.hash('123456', 10);
-//       await Admin.create({
-//         email: 'admin@ryd.com',
-//         password: hashedPassword,
-//         nom: 'Super Admin'
-//       });
-//       console.log('✅ Admin par défaut créé : admin@ryd.com / 123456');
-//     } else {
-//       console.log('ℹ️ Admin déjà présent en base');
-//     }
-//   } catch (err) {
-//     console.error('❌ Erreur création admin par défaut :', err);
-//   }
-// })();
-
+ app.post(
+  '/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./routes/stripeWebhook')
+);
 
 // 🌍 CORS
 app.use(cors({
@@ -73,11 +50,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/stripe/webhook', require('./routes/stripeRoutes.js'));
 
-app.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  require('./routes/stripeWebhook')
-);
+
 
 
 // 🧠 JSON Middleware
