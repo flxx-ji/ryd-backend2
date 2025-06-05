@@ -73,40 +73,48 @@ router.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
-// 4️⃣ PATCH /api/motos/:id → Modifier (image + données)
+// 4️⃣ PATCH /api/motos/:id → Modifier (avec image optionnelle)
 router.patch('/:id', upload.single('image'), async (req, res) => {
-  const id = String(req.params.id).trim();
+  const id = req.params.id.trim();
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "ID invalide" });
+    return res.status(400).json({ message: "❌ ID invalide" });
   }
 
   try {
     const data = { ...req.body };
 
+    // 🖼️ Si nouvelle image uploadée, on remplace
     if (req.file) {
-      data.image = req.file.path; // 🔥 Cloudinary image URL
+      data.image = req.file.path;
     }
 
+    // 📦 On parse les tarifs si c’est une string (FormData oblige)
     if (data.tarifs && typeof data.tarifs === 'string') {
-      data.tarifs = JSON.parse(data.tarifs);
+      try {
+        data.tarifs = JSON.parse(data.tarifs);
+      } catch (err) {
+        return res.status(400).json({ message: "❌ Tarifs mal formés (JSON invalide)", error: err });
+      }
     }
 
+    // 🔧 On update la moto
     const updatedMoto = await Moto.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true
     });
 
     if (!updatedMoto) {
-      return res.status(404).json({ message: "Moto non trouvée" });
+      return res.status(404).json({ message: "❌ Moto non trouvée" });
     }
 
     res.status(200).json(updatedMoto);
   } catch (error) {
-    console.error("❌ Erreur lors de la mise à jour :", error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur serveur PATCH :", error);
+    res.status(500).json({ message: "Erreur serveur lors de la mise à jour", error });
   }
 });
+
 
 // 5️⃣ DELETE /api/motos/:id → Supprimer
 router.delete('/:id', async (req, res) => {
