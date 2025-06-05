@@ -39,6 +39,8 @@ async function notifyOwner(reservation) {
   };
 
   try {
+    console.log("📧 Envoi email à", process.env.OWNER_EMAIL);
+
     const info = await transporter.sendMail(mailOptions);
     console.log("✅ Email envoyé au propriétaire :", info.response);
   } catch (error) {
