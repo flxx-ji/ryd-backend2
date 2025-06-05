@@ -77,7 +77,7 @@ app.post('/webhook', require('./routes/stripeWebhook')); // Webhook Stripe
 
 
 // 🧠 JSON Middleware
-app.use(express.json({ strict: false }));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 🌐 Routes API
