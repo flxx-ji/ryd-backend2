@@ -5,6 +5,7 @@ const Reservation = require('../models/reservation');
 const authMiddleware = require('../middleware/authMiddleware'); // 🔒 Ajout du middleware de sécurité
 const Moto = require('../models/moto');
 const Client = require('../models/client');
+const { notifyOwner } = require('../utils/mailer');
 
 
 // Toutes les routes ci-dessous sont protégées
@@ -67,19 +68,36 @@ router.post('/', async (req, res) => {
 
 // ✅ PUT - Modifier une réservation
 router.put('/:id', async (req, res) => {
-    try {
-        const { dateDebut, dateFin, statut } = req.body;
-        const reservation = await Reservation.findByIdAndUpdate(
-            req.params.id,
-            { dateDebut, dateFin, statut },
-            { new: true, runValidators: true }
-        );
-        if (!reservation) return res.status(404).json({ message: "Réservation introuvable" });
-        res.status(200).json(reservation);
-    } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la modification de la réservation", error });
+  try {
+    const { dateDebut, dateFin, statut } = req.body;
+
+    const reservation = await Reservation.findByIdAndUpdate(
+      req.params.id,
+      { dateDebut, dateFin, statut },
+      { new: true, runValidators: true }
+    ).populate('clientId', 'email telephone')
+     .populate('motoId', 'nom');
+
+    if (!reservation) return res.status(404).json({ message: "Réservation introuvable" });
+
+    // ✅ Si le statut est passé à "confirmée", envoi du mail
+    if (statut === "confirmée") {
+      await notifyOwner({
+        nomMoto: reservation.motoId.nom,
+        dateDebut: reservation.dateDebut,
+        dateFin: reservation.dateFin,
+        prixTotal: reservation.prixTotal,
+        email: reservation.clientId.email,
+        telephone: reservation.clientId.telephone
+      });
     }
+
+    res.status(200).json(reservation);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur lors de la modification de la réservation", error });
+  }
 });
+
 
 // ✅ DELETE - Supprimer une réservation
 router.delete('/:id', async (req, res) => {
