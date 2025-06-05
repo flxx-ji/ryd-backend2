@@ -73,6 +73,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/stripe/webhook', require('./routes/stripeRoutes.js'));
 
+app.post('/webhook', require('./routes/stripeWebhook')); // Webhook Stripe
+
+
 // 🧠 JSON Middleware
 app.use(express.json({ strict: false }));
 app.use(express.urlencoded({ extended: true }));

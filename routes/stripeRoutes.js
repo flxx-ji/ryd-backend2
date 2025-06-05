@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Reservation = require('../models/reservation');
+const { notifyOwner } = require('../utils/mailer');
+
+
 
 const FRONT_URL = process.env.FRONT_URL || 'http://localhost:5173'; // 👈 par défaut local
 
@@ -105,6 +108,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
       if (updated) {
         console.log(`✅ Paiement confirmé pour réservation ${updated._id}`);
+        await notifyOwner(updated);
       } else {
         console.warn("⚠️ Réservation non trouvée :", reservationId);
       }
