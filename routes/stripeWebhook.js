@@ -2,13 +2,12 @@ const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Reservation = require('../models/reservation'); // 💾 BDD
-const { notifyOwner } = require('../utils/mailer'); // 📧 Mail
+const sendEmails = require('../utils/sendEmails'); // 📤 Nouveau système d'envoi Resend
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 // ⚠️ Le body brut est nécessaire ici → cette route DOIT être branchée avec express.raw dans server.js
 router.post('/', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
-
   let event;
 
   try {
@@ -36,7 +35,20 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
 
       if (updated) {
         console.log(`🔄 Réservation ${updated._id} confirmée en BDD.`);
-        await notifyOwner(updated); // 📤 Envoi du mail au proprio
+
+        // ✉️ Envoi du mail avec Resend
+        await sendEmails({
+          to: process.env.OWNER_EMAIL,
+          subject: `💸 Nouvelle réservation confirmée – ${updated.nomMoto}`,
+          html: `
+            <h2>Nouvelle réservation confirmée</h2>
+            <p><strong>Moto :</strong> ${updated.nomMoto}</p>
+            <p><strong>Dates :</strong> du ${new Date(updated.dateDebut).toLocaleDateString()} au ${new Date(updated.dateFin).toLocaleDateString()}</p>
+            <p><strong>Client :</strong> ${updated.email} (${updated.telephone})</p>
+            <p><strong>Montant payé :</strong> ${updated.prixTotal} €</p>
+          `
+        });
+
         console.log("📨 Email envoyé au propriétaire.");
       } else {
         console.warn("⚠️ Réservation introuvable pour ID :", reservationId);
