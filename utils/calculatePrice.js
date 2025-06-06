@@ -1,30 +1,30 @@
 // utils/calculatePrice.js
 
-/**
- * Calcule le prix en fonction du nombre de jours et des règles spéciales
- * @param {number} jours - Le nombre de jours de location
- * @param {number} tarifJournalier - Tarif standard par jour
- * @param {Object} tarifsSpeciaux - Contient les tarifs fixes et la réduction
- * @returns {number} - Prix total calculé
- */
-function calculatePrice(jours, tarifJournalier, tarifsSpeciaux) {
-    if (jours <= 0) return 0; // Protection contre les cas négatifs ou 0 jours
+function calculatePrice(moto, nbJours) {
+  const tarifs = moto.tarifs;
+  
+  if (!tarifs || !tarifs.unJour || !tarifs.uneSemaine) {
+    throw new Error("Les tarifs ne sont pas correctement définis pour cette moto.");
+  }
 
-    // Gestion des tarifs spéciaux
-    if (jours === 3) {
-        return tarifsSpeciaux.troisJours; // Prix fixe pour 3 jours
-    }
+  if (nbJours === 1) {
+    return tarifs.unJour;
+  }
 
-    if (jours >= 4 && jours <= 5) {
-        return jours * tarifJournalier * 0.8; // Réduction de -20%
-    }
+  if (nbJours >= 2 && nbJours <= 3) {
+    return Math.round(tarifs.unJour * nbJours * 0.95); // -5%
+  }
 
-    if (jours === 7) {
-        return tarifsSpeciaux.uneSemaine; // Prix fixe pour 1 semaine
-    }
+  if (nbJours >= 4 && nbJours <= 5) {
+    return Math.round(tarifs.unJour * nbJours * 0.8); // -20%
+  }
 
-    // Si aucune règle spéciale ne s'applique, tarif journalier classique
-    return jours * tarifJournalier;
+  if (nbJours >= 6) {
+    // Le prix à la semaine s'applique pour 6 ou 7 jours
+    return tarifs.uneSemaine;
+  }
+
+  return 0;
 }
 
 module.exports = { calculatePrice };

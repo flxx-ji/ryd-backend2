@@ -1,25 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const Reservation = require('../../models/reservation');
-const Client = require('../../models/client');
-const Moto = require('../../models/moto');
+const Reservation = require('../models/reservation');
+const Client = require('../models/client');
+const Moto = require('../models/moto');
 
-// 🧠 Fonction de calcul de tarif dynamique basée sur les règles métiers
+// 📦 Fonction mail avec Resend
+const { sendConfirmationClient, sendNotificationOwner } = require('../utils/sendEmails');
+
+// 🧠 Fonction de calcul de tarif dynamique
 function calculerTarif(jours, tarifBase, tarifSemaine) {
   if (jours <= 0) return 0;
 
   if (jours >= 6 && jours <= 7) {
-    return tarifSemaine; // 🔁 6 ou 7 jours = tarif semaine
+    return tarifSemaine;
   } else if (jours >= 4 && jours <= 5) {
-    return jours * tarifBase * 0.8; // 🔁 -20% pour 4 à 5 jours
+    return jours * tarifBase * 0.8;
   } else if (jours === 3) {
-    return jours * tarifBase * 0.9; // 🔁 -10% pour 3 jours
+    return jours * tarifBase * 0.9;
   }
 
-  return jours * tarifBase; // ✅ Tarif classique
+  return jours * tarifBase;
 }
 
-// 🛠️ Ajouter une réservation avec calcul tarif automatique
+// 🛠️ Ajouter une réservation
 router.post('/', async (req, res) => {
   try {
     const { clientId, vehiculeId, dateDebut, dateFin, statut = 'en attente' } = req.body;
@@ -32,9 +35,9 @@ router.post('/', async (req, res) => {
 
     const debut = new Date(dateDebut);
     const fin = new Date(dateFin);
-    const temps = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24)) + 1;
+    const jours = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24)) + 1;
 
-    const prixEstime = calculerTarif(temps, moto.tarifs.unJour, moto.tarifs.uneSemaine);
+    const prixEstime = calculerTarif(jours, moto.tarifs.unJour, moto.tarifs.uneSemaine);
 
     const reservation = new Reservation({
       client: clientId,
@@ -46,6 +49,11 @@ router.post('/', async (req, res) => {
     });
 
     const nouvelleReservation = await reservation.save();
+
+    // 📩 Envoi des mails
+    await sendConfirmationClient(client.email, client.prenom, moto.nom, dateDebut, dateFin, prixEstime);
+    await sendNotificationOwner(`${client.prenom} ${client.nom}`, moto.nom, dateDebut, dateFin, prixEstime);
+
     res.status(201).json(nouvelleReservation);
 
   } catch (err) {
@@ -74,7 +82,6 @@ router.put('/:id', async (req, res) => {
 
     const { dateDebut, dateFin, statut } = req.body;
 
-    // Recalcul du prix si dates modifiées
     if (dateDebut && dateFin) {
       const moto = await Moto.findById(reservation.vehicule);
       const jours = Math.ceil((new Date(dateFin) - new Date(dateDebut)) / (1000 * 60 * 60 * 24)) + 1;

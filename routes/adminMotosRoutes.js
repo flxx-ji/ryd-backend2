@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const Moto = require('../../models/moto');
+const Moto = require('../models/moto');
 
 // Fonction pour calculer les tarifs spéciaux à l'enregistrement
 function calculerTarifsSpeciaux(unJour) {
