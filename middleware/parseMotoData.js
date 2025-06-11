@@ -7,6 +7,13 @@ function tryParseJSON(input, fallback = {}) {
 }
 
 function parseMotoData(req, res, next) {
+     
+    // 🔒 Ignore les méthodes qui n'ont pas de body
+  if (['GET', 'DELETE'].includes(req.method)) {
+    return next();
+  }
+
+
 	req.body.tarifs = tryParseJSON(req.body.tarifs, {});
 	req.body.caracteristiques = tryParseJSON(req.body.caracteristiques, {});
 	req.body.equipements = tryParseJSON(req.body.equipements, []);

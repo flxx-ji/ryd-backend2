@@ -3,6 +3,8 @@
 const express = require('express');
 const router = express.Router();
 const Moto = require('../models/moto');
+const authMiddleware = require('../middleware/authMiddleware');
+
 
 // Fonction pour calculer les tarifs spéciaux à l'enregistrement
 function calculerTarifsSpeciaux(unJour) {
@@ -13,7 +15,7 @@ function calculerTarifsSpeciaux(unJour) {
 }
 
 // ➕ Ajouter une nouvelle moto (admin uniquement)
-router.post('/', async (req, res) => {
+router.post('/',authMiddleware, async (req, res) => {
   try {
     const { unJour } = req.body.tarifs;
     const tarifsSpeciaux = calculerTarifsSpeciaux(unJour);
@@ -37,7 +39,7 @@ router.post('/', async (req, res) => {
 });
 
 // 📝 Modifier une moto
-router.put('/:id', async (req, res) => {
+router.put('/:id',authMiddleware, async (req, res) => {
   try {
     const { tarifs } = req.body;
 
@@ -76,7 +78,7 @@ router.put('/:id', async (req, res) => {
 
 
 // 🗑️ Supprimer une moto
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',authMiddleware, async (req, res) => {
   try {
     const moto = await Moto.findByIdAndDelete(req.params.id);
     if (!moto) return res.status(404).json({ message: 'Moto non trouvée' });
@@ -88,7 +90,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // 📄 Lister toutes les motos (admin)
-router.get('/', async (req, res) => {
+router.get('/',authMiddleware, async (req, res) => {
   try {
     const motos = await Moto.find();
     res.json(motos);

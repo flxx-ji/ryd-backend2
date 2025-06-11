@@ -1,3 +1,5 @@
+require ('events').EventEmitter.defaultMaxListeners = 20;
+
 // 🌍 Chargement des variables d'environnement (à faire TOUT EN HAUT)
 const dotenv = require('dotenv');
 dotenv.config();
