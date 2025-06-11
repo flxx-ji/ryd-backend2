@@ -39,31 +39,41 @@ router.post('/', async (req, res) => {
 // 📝 Modifier une moto
 router.put('/:id', async (req, res) => {
   try {
-    const { unJour } = req.body.tarifs;
-    const tarifsSpeciaux = calculerTarifsSpeciaux(unJour);
+    const { tarifs } = req.body;
+
+    // 🛑 Sécurité : Vérifie que tarifs et unJour sont bien définis
+    if (!tarifs || typeof tarifs.unJour !== 'number') {
+      return res.status(400).json({ message: "❌ Le tarif 'unJour' est manquant ou invalide." });
+    }
+
+    // 🔄 Calcul des tarifs dérivés
+    const tarifsSpeciaux = calculerTarifsSpeciaux(tarifs.unJour);
 
     const motoModifiee = await Moto.findByIdAndUpdate(
       req.params.id,
       {
         ...req.body,
         tarifs: {
-          ...req.body.tarifs,
+          ...tarifs,
           deuxTroisJours: tarifsSpeciaux.deuxTroisJours,
           quatreCinqJours: tarifsSpeciaux.quatreCinqJours,
           uneSemaine: tarifsSpeciaux.uneSemaine,
         }
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
-    if (!motoModifiee) return res.status(404).json({ message: 'Moto non trouvée' });
+    if (!motoModifiee) {
+      return res.status(404).json({ message: '❌ Moto non trouvée.' });
+    }
 
-    res.json(motoModifiee);
+    res.status(200).json(motoModifiee);
   } catch (err) {
-    console.error("Erreur modification moto :", err);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error("❌ Erreur modification moto :", err);
+    res.status(500).json({ message: 'Erreur serveur', error: err.message });
   }
 });
+
 
 // 🗑️ Supprimer une moto
 router.delete('/:id', async (req, res) => {

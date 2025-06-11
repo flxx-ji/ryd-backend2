@@ -27,4 +27,18 @@ function calculatePrice(moto, nbJours) {
   return 0;
 }
 
-module.exports = { calculatePrice };
+function calculerTarifsSpeciaux(unJour) {
+  // on calcule et on FORCEMENT retourne des nombres (pas de string genre "640 - 800")
+  const deuxTroisJours = Math.round(unJour * 2.5 * 0.95);
+  const quatreCinqJours = Math.round(unJour * 4.5 * 0.8);
+  const uneSemaine = Math.round(unJour * 7 * 0.8);
+
+  return {
+    deuxTroisJours: Number(deuxTroisJours),
+    quatreCinqJours: Number(quatreCinqJours),
+    uneSemaine: Number(uneSemaine)
+  };
+}
+
+
+module.exports = { calculatePrice, calculerTarifsSpeciaux };
