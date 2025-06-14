@@ -1,114 +1,140 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
-const Reservation = require('../models/reservation');
-const Client = require('../models/client');
+
 const Moto = require('../models/moto');
+const Reservation = require('../models/reservation');
+const { calculatePrice } = require('../utils/calculatePrice');
 
-// 📦 Fonction mail avec Resend
-const { sendConfirmationClient, sendNotificationOwner } = require('../utils/sendEmails');
-
-// 🧠 Fonction de calcul de tarif dynamique
-function calculerTarif(jours, tarifBase, tarifSemaine) {
-  if (jours <= 0) return 0;
-
-  if (jours >= 6 && jours <= 7) {
-    return tarifSemaine;
-  } else if (jours >= 4 && jours <= 5) {
-    return jours * tarifBase * 0.8;
-  } else if (jours === 3) {
-    return jours * tarifBase * 0.9;
-  }
-
-  return jours * tarifBase;
-}
-
-// 🛠️ Ajouter une réservation
+// 📥 Créer une réservation
 router.post('/', async (req, res) => {
   try {
-    const { clientId, vehiculeId, dateDebut, dateFin, statut = 'en attente' } = req.body;
+    const {
+      clientId,
+      motoId,
+      dateDebut,
+      dateFin,
+      heureDebut,
+      heureFin,
+      email,
+      telephone
+    } = req.body;
 
-    const moto = await Moto.findById(vehiculeId);
-    if (!moto) return res.status(404).json({ message: "Moto introuvable." });
+    // ✅ Récupérer la moto selon ID ou nom partiel
+    const motoTrouvee = mongoose.isValidObjectId(motoId)
+      ? await Moto.findById(motoId)
+      : await Moto.findOne({ nom: { $regex: new RegExp(motoId, 'i') } });
 
-    const client = await Client.findById(clientId);
-    if (!client) return res.status(404).json({ message: "Client introuvable." });
+    if (!motoTrouvee)
+      return res.status(404).json({ message: "Moto introuvable" });
 
-    const debut = new Date(dateDebut);
-    const fin = new Date(dateFin);
-    const jours = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24)) + 1;
+    // 🧮 Calcul du nombre de jours réels
+    const debut = new Date(`${dateDebut}T${heureDebut}`);
+    const fin = new Date(`${dateFin}T${heureFin}`);
+    const nbJours = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24));
 
-    const prixEstime = calculerTarif(jours, moto.tarifs.unJour, moto.tarifs.uneSemaine);
+    if (nbJours <= 0 || isNaN(nbJours)) {
+      return res.status(400).json({
+        message: "Erreur dans le calcul du prix. Veuillez vérifier vos dates."
+      });
+    }
 
-    const reservation = new Reservation({
-      client: clientId,
-      vehicule: vehiculeId,
-      dateDebut: debut,
-      dateFin: fin,
-      statut,
-      prixEstime
+    // ❌ Vérification de conflits de réservation (chevauchement)
+    const conflitReservation = await Reservation.findOne({
+      motoId: motoTrouvee._id,
+      statut: { $ne: 'annulée' },
+      $or: [
+        { dateDebut: { $lt: fin }, dateFin: { $gt: debut } },
+        { dateDebut: { $eq: debut }, dateFin: { $eq: fin } }
+      ]
     });
 
-    const nouvelleReservation = await reservation.save();
+    if (conflitReservation) {
+      return res.status(400).json({
+        message: "❌ La moto est déjà réservée à ces horaires.",
+        conflit: conflitReservation
+      });
+    }
 
-    // 📩 Envoi des mails
-    await sendConfirmationClient(client.email, client.prenom, moto.nom, dateDebut, dateFin, prixEstime);
-    await sendNotificationOwner(`${client.prenom} ${client.nom}`, moto.nom, dateDebut, dateFin, prixEstime);
+    // 💸 Calcul du prix selon la logique métier
+    const prixTotalCalcule = calculatePrice(motoTrouvee.tarifs, nbJours);
 
+    if (isNaN(prixTotalCalcule) || prixTotalCalcule <= 0) {
+      return res.status(400).json({
+        message: "Erreur dans le calcul du prix. Veuillez vérifier vos dates."
+      });
+    }
+
+    // ✅ Création de la réservation
+    const nouvelleReservation = new Reservation({
+      clientId,
+      motoId: motoTrouvee._id,
+      nomMoto: motoTrouvee.nom,
+      dateDebut: debut,
+      dateFin: fin,
+      heureDebut,
+      heureFin,
+      email,
+      telephone,
+      prixTotal: prixTotalCalcule,
+      statut: 'en attente'
+    });
+
+    await nouvelleReservation.save();
     res.status(201).json(nouvelleReservation);
 
-  } catch (err) {
-    console.error("Erreur lors de la création d'une réservation :", err);
-    res.status(500).json({ message: "Erreur serveur." });
+  } catch (error) {
+  console.error("❌ Erreur lors de la création de la réservation :", error.message || error);
+  res.status(500).json({ message: "Erreur serveur", erreur: error.message || error });
+}
+
+});
+
+// 📋 Récupérer toutes les réservations
+router.get('/', async (req, res) => {
+  try {
+    const reservations = await Reservation.find().sort({ createdAt: -1 });
+    res.status(200).json(reservations);
+  } catch (error) {
+    console.error("❌ Erreur lors de la récupération des réservations :", error);
+    res.status(500).json({ message: "Erreur serveur", error });
   }
 });
 
-// 📥 Lire toutes les réservations
-router.get('/', async (req, res) => {
+// 🔍 Récupérer une réservation par ID
+router.get('/:id', async (req, res) => {
   try {
-    const reservations = await Reservation.find()
-      .populate('client')
-      .populate('vehicule');
-    res.json(reservations);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const reservation = await Reservation.findById(req.params.id).populate('clientId motoId');
+    if (!reservation) return res.status(404).json({ message: "Réservation introuvable" });
+    res.status(200).json(reservation);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error });
   }
 });
 
 // ✏️ Modifier une réservation
 router.put('/:id', async (req, res) => {
   try {
-    const reservation = await Reservation.findById(req.params.id);
-    if (!reservation) return res.status(404).json({ message: "Réservation introuvable." });
-
-    const { dateDebut, dateFin, statut } = req.body;
-
-    if (dateDebut && dateFin) {
-      const moto = await Moto.findById(reservation.vehicule);
-      const jours = Math.ceil((new Date(dateFin) - new Date(dateDebut)) / (1000 * 60 * 60 * 24)) + 1;
-      reservation.prixEstime = calculerTarif(jours, moto.tarifs.unJour, moto.tarifs.uneSemaine);
-      reservation.dateDebut = dateDebut;
-      reservation.dateFin = dateFin;
-    }
-
-    if (statut) reservation.statut = statut;
-
-    const maj = await reservation.save();
-    res.json(maj);
-
-  } catch (err) {
-    console.error("Erreur lors de la modification :", err);
-    res.status(500).json({ message: "Erreur serveur." });
+    const updated = await Reservation.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updated) return res.status(404).json({ message: "Réservation introuvable" });
+    res.status(200).json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error });
   }
 });
 
 // 🗑️ Supprimer une réservation
 router.delete('/:id', async (req, res) => {
   try {
-    const suppr = await Reservation.findByIdAndDelete(req.params.id);
-    if (!suppr) return res.status(404).json({ message: "Réservation introuvable." });
-    res.json({ message: "Réservation supprimée." });
-  } catch (err) {
-    res.status(500).json({ message: "Erreur serveur." });
+    const deleted = await Reservation.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Réservation introuvable" });
+    res.status(200).json({ message: "Réservation supprimée avec succès" });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error });
   }
 });
 
