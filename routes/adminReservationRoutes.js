@@ -127,21 +127,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Modification partiel (tarifs, etc.)
-router.patch('/:id', async (req, res) => {
-  try {
-    const moto = await Moto.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
-    );
-    if (!moto) return res.status(404).json({ message: "Moto introuvable." });
-    res.json(moto);
-  } catch (err) {
-    console.error("Erreur PATCH moto :", err);
-    res.status(500).json({ message: "Erreur serveur." });
-  }
-});
+
 
 
 // 🗑️ Supprimer une réservation
