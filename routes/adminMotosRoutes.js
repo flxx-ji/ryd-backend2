@@ -115,4 +115,38 @@ router.get('/',authMiddleware, async (req, res) => {
   }
 });
 
+// ✅ TEMP PATCH - Corriger motos incomplètes
+router.patch('/reparer-tarifs', authMiddleware, async (req, res) => {
+  try {
+    const motos = await Moto.find({ 'tarifs.unJour': { $exists: true } });
+
+    let reparations = 0;
+
+    for (let moto of motos) {
+      const unJour = moto.tarifs.unJour;
+      const tarifsSpeciaux = {
+        deuxTroisJours: `${unJour * 2} - ${unJour * 3}`,
+        quatreCinqJours: `${(unJour * 4 * 0.8).toFixed(2)} - ${(unJour * 5 * 0.8).toFixed(2)}`,
+        uneSemaine: unJour * 6
+      };
+
+      // On met à jour les champs manquants
+      moto.tarifs = {
+        ...moto.tarifs,
+        ...tarifsSpeciaux
+      };
+
+      await moto.save();
+      reparations++;
+    }
+
+    res.json({ message: `✅ ${reparations} motos corrigées.` });
+  } catch (err) {
+    console.error("Erreur réparation motos :", err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+});
+
+
+
 module.exports = router;
