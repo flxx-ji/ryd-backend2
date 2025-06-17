@@ -20,6 +20,11 @@ router.post('/', async (req, res) => {
       telephone
     } = req.body;
 
+    // 🔒 Validation champs requis
+    if (!clientId || !motoId || !dateDebut || !dateFin || !heureDebut || !heureFin || !email || !telephone) {
+      return res.status(400).json({ message: "Tous les champs sont requis." });
+    }
+
     // ✅ Récupérer la moto selon ID ou nom partiel
     const motoTrouvee = mongoose.isValidObjectId(motoId)
       ? await Moto.findById(motoId)
@@ -84,10 +89,9 @@ router.post('/', async (req, res) => {
     res.status(201).json(nouvelleReservation);
 
   } catch (error) {
-  console.error("❌ Erreur lors de la création de la réservation :", error.message || error);
-  res.status(500).json({ message: "Erreur serveur", erreur: error.message || error });
-}
-
+    console.error("❌ Erreur lors de la création de la réservation :", error.message || error);
+    res.status(500).json({ message: "Erreur serveur", erreur: error.message || error });
+  }
 });
 
 // 📋 Récupérer toutes les réservations
@@ -126,9 +130,6 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error });
   }
 });
-
-
-
 
 // 🗑️ Supprimer une réservation
 router.delete('/:id', async (req, res) => {
