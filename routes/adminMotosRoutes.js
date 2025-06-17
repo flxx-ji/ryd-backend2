@@ -147,6 +147,20 @@ router.patch('/reparer-tarifs', authMiddleware, async (req, res) => {
   }
 });
 
+// 📄 Obtenir une moto par ID (admin)
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const moto = await Moto.findById(req.params.id);
+    if (!moto) {
+      return res.status(404).json({ message: "Moto introuvable." });
+    }
+    res.status(200).json(moto);
+  } catch (err) {
+    console.error("Erreur récupération moto :", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
 
 
 module.exports = router;
