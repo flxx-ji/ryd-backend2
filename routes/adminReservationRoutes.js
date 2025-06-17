@@ -20,12 +20,10 @@ router.post('/', async (req, res) => {
       telephone
     } = req.body;
 
-    // 🔒 Validation champs requis
     if (!clientId || !motoId || !dateDebut || !dateFin || !heureDebut || !heureFin || !email || !telephone) {
       return res.status(400).json({ message: "Tous les champs sont requis." });
     }
 
-    // ✅ Récupérer la moto selon ID ou nom partiel
     const motoTrouvee = mongoose.isValidObjectId(motoId)
       ? await Moto.findById(motoId)
       : await Moto.findOne({ nom: { $regex: new RegExp(motoId, 'i') } });
@@ -33,7 +31,6 @@ router.post('/', async (req, res) => {
     if (!motoTrouvee)
       return res.status(404).json({ message: "Moto introuvable" });
 
-    // 🧮 Calcul du nombre de jours réels
     const debut = new Date(`${dateDebut}T${heureDebut}`);
     const fin = new Date(`${dateFin}T${heureFin}`);
     const nbJours = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24));
@@ -44,7 +41,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ❌ Vérification de conflits de réservation (chevauchement)
     const conflitReservation = await Reservation.findOne({
       motoId: motoTrouvee._id,
       statut: { $ne: 'annulée' },
@@ -61,7 +57,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 💸 Calcul du prix selon la logique métier
     const prixTotalCalcule = calculatePrice(motoTrouvee.tarifs, nbJours);
 
     if (isNaN(prixTotalCalcule) || prixTotalCalcule <= 0) {
@@ -70,7 +65,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // ✅ Création de la réservation
     const nouvelleReservation = new Reservation({
       clientId,
       motoId: motoTrouvee._id,
@@ -116,15 +110,36 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ✏️ Modifier une réservation
+// ✏️ Modifier une réservation avec recalcul dynamique du prix
 router.put('/:id', async (req, res) => {
   try {
+    const { dateDebut, dateFin, heureDebut, heureFin, motoId } = req.body;
+    const reservation = await Reservation.findById(req.params.id);
+
+    if (!reservation) return res.status(404).json({ message: "Réservation introuvable" });
+
+    if (dateDebut && dateFin && heureDebut && heureFin && motoId) {
+      const debut = new Date(`${dateDebut}T${heureDebut}`);
+      const fin = new Date(`${dateFin}T${heureFin}`);
+      const nbJours = Math.ceil((fin - debut) / (1000 * 60 * 60 * 24));
+
+      const motoTrouvee = mongoose.isValidObjectId(motoId)
+        ? await Moto.findById(motoId)
+        : await Moto.findOne({ nom: { $regex: new RegExp(motoId, 'i') } });
+
+      if (!motoTrouvee)
+        return res.status(404).json({ message: "Moto introuvable pour recalcul" });
+
+      const prixTotalCalcule = calculatePrice(motoTrouvee.tarifs, nbJours);
+      req.body.prixTotal = prixTotalCalcule;
+    }
+
     const updated = await Reservation.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-    if (!updated) return res.status(404).json({ message: "Réservation introuvable" });
+
     res.status(200).json(updated);
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur", error });
